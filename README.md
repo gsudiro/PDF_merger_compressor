@@ -20,16 +20,16 @@ This Python application provides a user-friendly graphical interface for merging
    ```bash
    git clone https://github.com/yourusername/pdf-merger-compressor.git
 2. Create the virtual environemnt folder
-  ```bash
+   ```bash
    python3 -m venv .venv
 4. Activate the environment ('deactivate' to exit)
-  ```bash
+   ```bash
    source .venv/Scripts/activate 
 5. Install the required libraries
-    ```bash
+   ```bash
    pip install -r requirements.txt
 6. Run the application using:
-  ```bash 
+   ```bash 
    python pdfMerger.py
-
-## If you don't want to run the script through Python, you can use the pre-built executable file. The executable can be found in the ./dist folder: pdfMerger.exe
+## Executable file
+If you don't want to run the script through Python, you can use the pre-built executable file. The executable can be found in the ./dist folder: pdfMerger.exe
