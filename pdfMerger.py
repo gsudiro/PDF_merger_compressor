@@ -29,8 +29,8 @@ def merge_and_compress_pdfs():
     if not pdf_files:
         return
 
-    merged_pdf = '../pdfs/merged_output.pdf'
-    compressed_pdf = '../pdfs/compressed_output.pdf'
+    merged_pdf = './pdfs/merged_output.pdf'
+    compressed_pdf = './pdfs/compressed_output.pdf'
 
     # Create a thread for merging and compressing PDFs
     thread = threading.Thread(target=process_pdfs, args=(pdf_files, merged_pdf, compressed_pdf))
