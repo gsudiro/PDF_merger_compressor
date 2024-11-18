@@ -31,5 +31,3 @@ This Python application provides a user-friendly graphical interface for merging
 6. Run the application using:
    ```bash 
    python pdfMerger.py
-## Executable file
-If you don't want to run the script through Python, you can use the pre-built executable file. The executable can be found in the ./dist folder: pdfMerger.exe

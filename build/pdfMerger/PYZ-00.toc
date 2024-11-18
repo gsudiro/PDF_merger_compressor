@@ -1,2 +1,0 @@
-('C:\\Users\\gsudiro\\git\\PDF_merger_compressor\\build\\pdfMerger\\PYZ-00.pyz',
- [])
