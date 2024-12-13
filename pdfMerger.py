@@ -7,24 +7,58 @@ import os
 import sys
 import datetime
 
+class DraggableListbox(tk.Listbox):
+    def __init__(self, master, **kw):
+        super().__init__(master, **kw)
+        self.bind('<Button-1>', self.on_click)
+        self.bind('<B1-Motion>', self.on_drag)
+        self.bind('<ButtonRelease-1>', self.on_release)
+        self.curindex = None
+        self.drag_data = None
+
+    def on_click(self, event):
+        i = self.nearest(event.y)
+        if i >= 0 and i < self.size():
+            self.curindex = i
+            self.drag_data = self.get(i)
+            self.selection_clear(0, tk.END)
+            self.selection_set(i)
+
+    def on_drag(self, event):
+        if self.curindex is None or self.drag_data is None:
+            return
+
+        i = self.nearest(event.y)
+        if 0 <= i < self.size():
+            if i != self.curindex:
+                self.delete(self.curindex)
+                self.insert(i, self.drag_data)
+                self.curindex = i
+                self.selection_clear(0, tk.END)
+                self.selection_set(i)
+                if hasattr(self, 'on_reorder_callback'):
+                    self.on_reorder_callback()
+
+    def on_release(self, event):
+        self.curindex = None
+        self.drag_data = None
+
+    def set_reorder_callback(self, callback):
+        self.on_reorder_callback = callback
+
 class PDFProcessor:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("PDF Merger and Compressor")
-        self.root.geometry("500x400")
-        
-        # Store selected files and output directory
+        self.root.geometry("500x420")
         self.selected_files = []
         self.output_dir = os.path.expanduser("~\\Documents")
-        
         self.create_gui()
 
     def create_gui(self):
-        # Create main frame
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Step 1: File Selection Section
         step1_frame = ttk.LabelFrame(main_frame, text="Step 1: Select PDF Files", padding="5")
         step1_frame.pack(fill=tk.X, pady=5)
 
@@ -34,11 +68,13 @@ class PDFProcessor:
         ttk.Button(button_frame, text="Select PDFs", command=self.select_pdfs).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Clear Selection", command=self.clear_selection).pack(side=tk.LEFT, padx=5)
 
-        # Selected files listbox
-        self.files_listbox = tk.Listbox(step1_frame, height=6)
-        self.files_listbox.pack(fill=tk.BOTH, expand=True, pady=5)
+        hint_label = ttk.Label(step1_frame, text="Drag and drop files to reorder", font=('helvetica', 8, 'italic'))
+        hint_label.pack(pady=(5, 0))
 
-        # Step 2: Output Settings Section
+        self.files_listbox = DraggableListbox(step1_frame, height=6, selectmode=tk.SINGLE)
+        self.files_listbox.pack(fill=tk.BOTH, expand=True, pady=5)
+        self.files_listbox.set_reorder_callback(self.on_list_reorder)
+
         step2_frame = ttk.LabelFrame(main_frame, text="Step 2: Configure Output", padding="5")
         step2_frame.pack(fill=tk.X, pady=5)
 
@@ -46,7 +82,6 @@ class PDFProcessor:
         self.output_label = ttk.Label(step2_frame, text=f"Output Directory: {self.output_dir}")
         self.output_label.pack(anchor=tk.W, padx=5, pady=2)
 
-        # Quality selection
         quality_frame = ttk.Frame(step2_frame)
         quality_frame.pack(fill=tk.X, pady=2)
         
@@ -57,22 +92,32 @@ class PDFProcessor:
                                    state="readonly", width=10)
         quality_combo.pack(side=tk.LEFT, padx=5)
 
-        # Step 3: Start Processing Section
-        step3_frame = ttk.LabelFrame(main_frame, text="Step 3: Start Processing", padding="5")
-        step3_frame.pack(fill=tk.X, pady=5)
+        step3_frame = ttk.LabelFrame(main_frame, text="Step 3: Start Processing")
+        step3_frame.pack(fill=tk.X, pady=(5, 10))
 
-        # Big START button
-        self.start_button = ttk.Button(step3_frame, text="START", 
+        button_container = ttk.Frame(step3_frame)
+        button_container.pack(fill=tk.X, padx=10, pady=10)
+
+        self.start_button = ttk.Button(button_container, text="START", 
                                      command=self.merge_and_compress_pdfs,
                                      style='Start.TButton')
-        self.start_button.pack(pady=10)
+        self.start_button.pack(expand=True)
 
-        # Progress bar
-        self.progress = ttk.Progressbar(step3_frame, mode='indeterminate')
-        
-        # Create custom style for START button
+        self.progress = ttk.Progressbar(button_container, mode='indeterminate')
+
         style = ttk.Style()
         style.configure('Start.TButton', font=('helvetica', 12, 'bold'))
+
+    def on_list_reorder(self):
+        ordered_files = []
+        filename_to_path = {os.path.basename(path): path for path in self.selected_files}
+        
+        for i in range(self.files_listbox.size()):
+            filename = self.files_listbox.get(i)
+            if filename in filename_to_path:
+                ordered_files.append(filename_to_path[filename])
+        
+        self.selected_files = ordered_files
 
     def select_pdfs(self):
         files = filedialog.askopenfilenames(
@@ -80,7 +125,7 @@ class PDFProcessor:
             filetypes=[("PDF Files", "*.pdf")]
         )
         if files:
-            self.selected_files = sorted(files)  # Sort files alphabetically
+            self.selected_files = sorted(files)
             self.update_files_listbox()
 
     def update_files_listbox(self):
@@ -127,18 +172,13 @@ class PDFProcessor:
             if not self.selected_files:
                 raise Exception("No PDF files selected!")
 
-            # Generate output filenames
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             merged_pdf = os.path.join(self.output_dir, f'merged_{timestamp}.pdf')
             compressed_pdf = os.path.join(self.output_dir, f'compressed_{timestamp}.pdf')
 
-            # Merge PDFs
             self.merge_pdfs(self.selected_files, merged_pdf)
-            
-            # Compress the merged PDF
             self.compress_pdf_with_ghostscript(merged_pdf, compressed_pdf)
 
-            # Clean up merged PDF if compression successful
             if os.path.exists(compressed_pdf):
                 os.remove(merged_pdf)
                 messagebox.showinfo("Success", 
